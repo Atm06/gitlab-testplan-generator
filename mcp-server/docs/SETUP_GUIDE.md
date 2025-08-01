@@ -47,6 +47,49 @@ ollama serve
 ollama pull qwen2.5-coder:1.5b
 ```
 
+### 2.3 Verify AI Agent Setup (Optional)
+
+To ensure your AI agent is running correctly on Ollama, you can run the verification script:
+
+```bash
+# Navigate to the examples directory
+cd mcp-server/examples
+
+# Run the AI agent verification test
+python test_ollama.py
+```
+
+This test will check:
+- ✅ Ollama server status and version
+- ✅ Required AI model availability
+- ✅ AI generation capabilities
+
+If all tests pass, you'll see:
+```
+=== Ollama AI Agent Status Check ===
+
+1. Checking if Ollama server is running...
+✅ Ollama server is running (version: 0.9.6)
+
+2. Checking if required model is available...
+✅ Required model 'qwen2.5-coder:1.5b' is available
+
+3. Testing AI generation...
+✅ AI generation successful!
+
+🎉 All tests passed! Your AI agent is running correctly on Ollama.
+```
+
+**Note**: Make sure you have the required dependencies installed. If you encounter a `ModuleNotFoundError`, install the missing packages in your virtual environment:
+
+```bash
+# Activate your virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install required dependencies
+pip install aiohttp
+```
+
 ## Step 3: Setup the MCP Server
 
 ### 3.1 Clone and Setup
@@ -57,7 +100,7 @@ cd ~/Projects  # or wherever you keep projects
 
 # Clone this repository (or download the files)
 git clone <repository-url>  # or create new directory
-cd gitlab-ui-test-plan-generator
+cd gitlab-test-plan-generator
 
 # Create virtual environment
 python3 -m venv .venv
@@ -192,6 +235,7 @@ The tool will generate:
 - **Solution**: Make sure Ollama is running with `ollama serve`
 - Check if the model is installed: `ollama list`
 - Pull the model if needed: `ollama pull qwen2.5-coder:1.5b`
+- **Verify AI agent**: Run `python mcp-server/examples/test_ollama.py` to check AI agent status
 
 ### Debug Mode
 
@@ -214,7 +258,11 @@ Test your complete setup:
 # 1. Check Ollama is running
 curl http://localhost:11434/api/version
 
-# 2. Test GitLab connection
+# 2. Test AI agent (optional but recommended)
+cd mcp-server/examples
+python test_ollama.py
+
+# 3. Test GitLab connection
 cd gitlab-ui-test-plan-generator/mcp-server
 python -c "
 import os
@@ -226,7 +274,7 @@ gl = gitlab.Gitlab(os.getenv('GITLAB_URL'), private_token=os.getenv('GITLAB_TOKE
 print(f'✅ GitLab connection successful: {gl.user.username}')
 "
 
-# 3. Test the demo
+# 4. Test the demo
 python examples/demo_analysis.py
 ```
 

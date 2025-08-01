@@ -89,13 +89,16 @@ Focus on:
 2. Which UI components or pages will be impacted
 3. What user workflows might be affected
 4. Potential edge cases or areas of concern
+5. Be as detailed as possible. For each section, provide at least 3-5 sentences or bullet points. If possible, include examples.
 
 Respond with a JSON object containing:
 {
-    "summary": "Brief summary of changes",
-    "affected_areas": ["list", "of", "affected", "ui", "areas"],
-    "user_impact": "Description of how users will be affected",
-    "risk_areas": ["potential", "risk", "areas"]
+    "summary": "📝 Detailed summary of changes (at least 3 sentences)",
+    "affected_areas": ["🧩 List all affected UI areas, be specific"],
+    "user_impact": "👤 Describe in detail how users will be affected, including edge cases",
+    "risk_areas": ["⚠️ List potential risk areas, explain why each is a risk"],
+    "ai_insights": "🤖 Provide additional AI-driven insights, such as hidden risks, suggestions for extra testing, code quality observations, or architectural concerns. Be as thorough as possible.",
+    "thinking_process": "🧠 Step-by-step reasoning or approach you used to analyze the changes. Explain your thought process, what patterns you noticed, and how you arrived at your conclusions."
 }"""
         
         # Prepare the changes summary for the AI
@@ -120,7 +123,9 @@ Respond with a JSON object containing:
                 "summary": response[:200] + "..." if len(response) > 200 else response,
                 "affected_areas": [change.file_path for change in changes[:5]],
                 "user_impact": "Manual testing required to verify functionality",
-                "risk_areas": ["UI functionality", "User experience"]
+                "risk_areas": ["UI functionality", "User experience"],
+                "ai_insights": "No additional insights generated. Please review the code manually for hidden risks or architectural concerns.",
+                "thinking_process": "🧠 Unable to parse AI response. Manual analysis recommended."
             }
     
     async def generate_ui_test_scenarios(
@@ -135,12 +140,16 @@ Respond with a JSON object containing:
         """
         system_prompt = """You are a QA engineer creating detailed UI test scenarios for a web application.
 Your task is to create comprehensive, actionable test scenarios that a manual tester can follow.
+Format your response for maximum readability:
+- Use appropriate emojis for each section (e.g., 📝 for summary, 🧩 for affected areas, 👤 for user impact, ⚠️ for risks, 🤖 for AI insights).
 
+- Make the report visually appealing and easy to scan.
 For each scenario, provide:
 1. A clear, descriptive title
-2. Step-by-step testing instructions
-3. Expected results for each step
-4. Risk level (low, medium, high)
+2. At least 5 step-by-step testing instructions
+3. Expected results for each step, with specific examples
+4. Risk level (low, medium, high) and a short explanation of why it's a risk
+5. AI insights: Provide additional AI-driven insights, such as hidden risks, suggestions for extra testing, code quality observations, or architectural concerns. Be as thorough as possible.
 
 Focus on:
 - Core functionality that was changed
@@ -148,7 +157,7 @@ Focus on:
 - Edge cases and error conditions
 - UI consistency and usability
 
-Respond with a JSON array of test scenarios:
+Respond with a JSON array of 5-7 test scenarios, each as detailed as possible:
 [
     {
         "title": "Test scenario title",
@@ -158,7 +167,8 @@ Respond with a JSON array of test scenarios:
                 "expected_result": "What should happen"
             }
         ],
-        "risk_level": "low|medium|high"
+        "risk_level": "low|medium|high",
+        "ai_insights": "Provide additional AI-driven insights, such as hidden risks, suggestions for extra testing, code quality observations, or architectural concerns. Be as thorough as possible."
     }
 ]"""
         

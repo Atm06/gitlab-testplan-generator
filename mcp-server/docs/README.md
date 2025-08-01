@@ -5,7 +5,7 @@ An AI-powered MCP server that generates comprehensive UI test plans from GitLab 
 ## 🏗️ Project Structure
 
 ```
-TestPlan-gen/
+gitlab-testplan-generator/
 ├── mcp-server/
 │   ├── src/gitlab_mcp/           # Main package
 │   │   ├── server.py            # MCP server with ui_test_plan_from_mr tool
@@ -14,12 +14,14 @@ TestPlan-gen/
 │   │   ├── ai_service.py        # Local Ollama AI integration
 │   │   └── models.py            # Pydantic data models
 │   ├── examples/                # Usage examples
-│   │   └── demo_analysis.py     # Demo script
+│   │   ├── demo_analysis.py     # Demo script
+│   │   ├── example_usage.py     # Example usage patterns
+│   │   └── test_ollama.py       # AI agent verification test
 │   ├── docs/                    # Documentation
 │   ├── main.py                  # Entry point
 │   ├── requirements.txt         # Dependencies
 │   └── .env                     # Environment configuration
-└── .venv/                       # Virtual environment
+└── venv/                        # Virtual environment
 ```
 
 ## 🔧 Features
@@ -54,7 +56,7 @@ TestPlan-gen/
 
 ```bash
 # Navigate to the project
-cd TestPlan-gen
+cd gitlab-testplan-generator
 
 # Create and activate virtual environment
 python3 -m venv .venv
@@ -83,14 +85,15 @@ Add to your `~/.cursor/mcp.json`:
 {
   "mcpServers": {
     "gitlab-ui-test-plan-generator": {
-      "command": "/path/to/TestPlan-gen/.venv/bin/python",
-      "args": ["/path/to/TestPlan-gen/mcp-server/main.py"],
+      "command": "/path/to/gitlab-testplan-generator/venv/bin/python",
+      "args": ["/path/to/gitlab-testplan-generator/mcp-server/main.py"],
       "env": {
         "GITLAB_URL": "https://gitlab.cee.redhat.com"
       }
     }
   }
 }
+```
 ```
 
 ### 5. Start Ollama
@@ -103,38 +106,37 @@ ollama serve
 ollama pull qwen2.5-coder:1.5b
 ```
 
-## 🛠️ Development
-
-### Running Tests
+### 6. Verify AI Agent (Optional but Recommended)
 
 ```bash
-# Run all tests
-pytest
+# Navigate to examples directory
+cd mcp-server/examples
 
-# Run with coverage
-pytest --cov=src/gitlab_mcp
-
-# Run specific test file
-pytest tests/test_analyzer.py -v
+# Run AI agent verification test
+python test_ollama.py
 ```
 
-### Code Quality
+This test verifies:
+- ✅ Ollama server status and version
+- ✅ Required AI model availability  
+- ✅ AI generation capabilities
 
-```bash
-# Format code
-black src/ tests/
-
-# Sort imports
-isort src/ tests/
-
-# Type checking
-mypy src/
+**Expected output:**
+```
+=== Ollama AI Agent Status Check ===
+✅ Ollama server is running (version: 0.9.6)
+✅ Required model 'qwen2.5-coder:1.5b' is available
+✅ AI generation successful!
+🎉 All tests passed! Your AI agent is running correctly on Ollama.
 ```
 
 ### Demo & Examples
 
 ```bash
-# Run the demo (works offline without GitLab credentials)
+# Verify AI agent is working correctly
+python examples/test_ollama.py
+
+# Run demo analysis (works offline without GitLab credentials)
 python examples/demo_analysis.py
 
 # Run with real GitLab connection
@@ -165,7 +167,7 @@ python examples/demo_analysis.py
 ### In Cursor:
 
 ```
-@ui_test_plan_from_mr https://gitlab.cee.redhat.com/customer-platform/ecosystem-catalog-nextjs/-/merge_requests/252
+@ui_test_plan_from_mr https://gitlab.cee.redhat.com/<project_name>/merge_requests/12345
 
 @ui_test_plan_from_mr https://gitlab.cee.redhat.com/project/-/merge_requests/123/diffs
 ```
@@ -173,8 +175,8 @@ python examples/demo_analysis.py
 ### Example Output:
 
 The tool generates:
-- **MR Title**: [RHEC-4171]: Fixes search sorting  
-- **Affected Pages**: Search interface components
+- **MR Title**: [JIRA-ID]: MR title description  
+- **Affected Pages**: Affected pages and components
 - **Test Scenarios**: 2-5 AI-generated scenarios
 - **Risk Levels**: High/Medium/Low for each scenario
 - **Detailed Steps**: Specific actions and expected results
@@ -199,7 +201,7 @@ The system automatically identifies components based on file patterns:
 - **Frontend**: `.js`, `.ts`, `.vue`, `.html`, `.css` files
 - **Backend**: `.py`, `.java`, `.cpp`, `.go` files
 - **Configuration**: `/config/`, `.env`, `.yaml`, `.json` files
-- **Security**: `/security/`, `/crypto/`, `/ssl/` files
+- **Security**: `/security/`, `/ssl/` files
 
 ### Risk Assessment
 
@@ -209,40 +211,28 @@ The server automatically assesses risk levels:
 - **Medium Risk**: API files, service files, moderate complexity (50-100 lines)
 - **Low Risk**: Documentation, simple changes (<50 lines)
 
-## 🧪 Testing
-
-The project includes comprehensive tests:
-
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test component interactions
-- **Mock Tests**: Test with simulated GitLab responses
-- **Fixtures**: Reusable test data and configurations
-
 ## 📖 Documentation
 
 - **[Setup Guide](SETUP_GUIDE.md)**: Detailed setup instructions
-- **[Examples](../examples/)**: Working code examples
-- **[Tests](../tests/)**: Test examples and patterns
+- **[Examples](../examples/)**: Working code examples and verification scripts
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes with tests
-4. Run the test suite: `pytest`
-5. Submit a pull request
+3. Make your changes and test manually
+4. Verify AI agent functionality: `python examples/test_ollama.py`
+5. Test with real GitLab merge requests
+6. Submit a pull request
 
 ### Development Setup
 
 ```bash
-# Install development dependencies
-pip install -e ".[dev]"
+# Install dependencies
+pip install -r requirements.txt
 
-# Set up pre-commit hooks
-pre-commit install
-
-# Run full test suite
-pytest --cov=src/gitlab_mcp --cov-report=html
+# Verify setup
+python examples/demo_analysis.py
 ```
 
 ## 📝 License

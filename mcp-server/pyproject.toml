@@ -40,8 +40,5 @@ gitlab-mcp-server = "gitlab_mcp.server:main"
 Homepage = "https://github.com/your-username/gitlab-mcp-server"
 Repository = "https://github.com/your-username/gitlab-mcp-server"
 
-[tool.setuptools]
-packages = ["gitlab_mcp"]
-
 [tool.setuptools.packages.find]
 where = ["src"] 

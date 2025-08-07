@@ -40,10 +40,15 @@ async def ui_test_plan_from_mr(mr_url: str, ctx: Context) -> Dict[str, Any]:
         Dictionary containing the AI-generated UI test plan with affected pages and test scenarios
     """
     try:
-        await ctx.info(f"🔍 Analyzing merge request: {mr_url}")
+        # Clean the URL - remove any extra @ symbols that Cursor might add
+        cleaned_url = mr_url.strip()
+        if cleaned_url.startswith('@'):
+            cleaned_url = cleaned_url[1:]
+        
+        await ctx.info(f"🔍 Analyzing merge request: {cleaned_url}")
         
         # Initialize analyzer with the MR URL
-        analyzer = CodeAnalyzer(mr_url)
+        analyzer = CodeAnalyzer(cleaned_url)
         
         # Get code changes
         changes = analyzer.get_change_analysis()

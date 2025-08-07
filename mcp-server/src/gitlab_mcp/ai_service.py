@@ -19,7 +19,7 @@ class AIConfig(BaseModel):
     """Configuration for AI service."""
     ollama_host: str = "http://localhost:11434"
     model_name: str = "qwen2.5-coder:1.5b"
-    max_tokens: int = 2048
+    max_tokens: int = 8192  # Increased from 8192 to allow for comprehensive responses
     temperature: float = 0.3
 
 
@@ -115,10 +115,13 @@ Respond with a JSON object containing:
         response = await self._call_ollama(prompt, system_prompt)
         
         try:
-            # Try to parse JSON response
-            return json.loads(response)
-        except json.JSONDecodeError:
+            # Try to parse JSON response, handling markdown code blocks
+            cleaned_response = self._clean_json_response(response)
+            return json.loads(cleaned_response)
+        except json.JSONDecodeError as e:
             # Fallback if AI doesn't return valid JSON
+            print(f"⚠️  JSON parsing failed: {e}")
+            print(f"Raw response: {response[:500]}...")
             return {
                 "summary": response[:200] + "..." if len(response) > 200 else response,
                 "affected_areas": [change.file_path for change in changes[:5]],
@@ -188,7 +191,9 @@ Create 3-5 focused test scenarios that cover the main functionality and potentia
         response = await self._call_ollama(prompt, system_prompt)
         
         try:
-            scenarios_data = json.loads(response)
+            # Clean and parse JSON response
+            cleaned_response = self._clean_json_response(response)
+            scenarios_data = json.loads(cleaned_response)
             scenarios = []
             
             for scenario_data in scenarios_data:
@@ -266,12 +271,39 @@ Create 3-5 focused test scenarios that cover the main functionality and potentia
         except:
             return False
 
+    def _clean_json_response(self, response: str) -> str:
+        """
+        Clean the AI response by removing markdown code block markers and other formatting.
+        
+        Args:
+            response: Raw response from the AI model
+            
+        Returns:
+            Cleaned JSON string ready for parsing
+        """
+        # Remove leading/trailing whitespace
+        cleaned = response.strip()
+        
+        # Remove markdown code block markers
+        if cleaned.startswith('```json'):
+            cleaned = cleaned[7:]  # Remove ```json
+        elif cleaned.startswith('```'):
+            cleaned = cleaned[3:]   # Remove ```
+            
+        if cleaned.endswith('```'):
+            cleaned = cleaned[:-3]  # Remove closing ```
+            
+        # Remove any remaining leading/trailing whitespace
+        cleaned = cleaned.strip()
+        
+        return cleaned
+
 
 def get_ai_config() -> AIConfig:
     """Get AI configuration from environment variables."""
     return AIConfig(
         ollama_host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
         model_name=os.getenv("OLLAMA_MODEL", "qwen2.5-coder:1.5b"),
-        max_tokens=int(os.getenv("AI_MAX_TOKENS", "2048")),
+        max_tokens=int(os.getenv("AI_MAX_TOKENS", "8192")),
         temperature=float(os.getenv("AI_TEMPERATURE", "0.3"))
     )

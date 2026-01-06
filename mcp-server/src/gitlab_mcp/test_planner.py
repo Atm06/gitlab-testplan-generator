@@ -8,12 +8,206 @@ UI-focused test plan with concrete scenarios and steps using local AI.
 import os
 from typing import List, Dict, Any
 
-from .models import ChangeAnalysis, UITestPlan, UITestScenario, TestStep
+from .models import (
+    ChangeAnalysis, UITestPlan, UITestScenario, TestStep,
+    EnhancedUITestPlan, ComponentOverview, DataFlow, ColumnMapping,
+    FilterTest, PaginationTest, TestCase, TestingMethod, TestChecklistItem
+)
 from .ai_service import LocalAIService, get_ai_config
 
 
 class UITestPlanGenerator:
     """Generates a UI-focused test plan from code changes."""
+
+    async def generate_enhanced_plan(self, changes: List[ChangeAnalysis], affected_pages: List[str], mr_title: str, analysis: Dict[str, Any] = None) -> EnhancedUITestPlan:
+        """
+        Generates an enhanced, detailed UI test plan using local AI.
+        
+        This method uses local AI to create a comprehensive test plan with:
+        - Component overview
+        - Data flow diagrams
+        - Column mappings
+        - Filter and pagination tests
+        - Testing methods
+        - Test checklist
+        """
+        # Default analysis if not provided
+        if analysis is None:
+            analysis = {
+                "summary": f"Changes detected in {len(changes)} files",
+                "user_impact": "Functionality may be affected",
+                "risk_areas": ["UI functionality"]
+            }
+        
+        config = get_ai_config()
+        
+        enhanced_data = None
+        scenarios = []
+        
+        try:
+            async with LocalAIService(config) as ai_service:
+                # Check if Ollama is running
+                if not await ai_service.check_ollama_status():
+                    print("⚠️  Ollama not available. Using fallback test plan.")
+                    enhanced_data = self._generate_fallback_enhanced_data(affected_pages, analysis)
+                    scenarios = self._generate_placeholder_scenarios(affected_pages, changes)
+                else:
+                    print("🤖 Generating enhanced AI-powered test plan...")
+                    enhanced_data = await ai_service.generate_enhanced_test_plan(
+                        changes, affected_pages, mr_title, analysis
+                    )
+                    print("✅ Generated enhanced test plan structure")
+                    
+                    # Also generate traditional scenarios for backward compatibility
+                    print("🤖 Generating AI-powered test scenarios...")
+                    scenarios = await ai_service.generate_ui_test_scenarios(
+                        changes, affected_pages, mr_title, analysis
+                    )
+                    print(f"✅ Generated {len(scenarios)} AI test scenarios")
+        
+        except Exception as e:
+            print(f"⚠️  AI test generation failed: {e}. Using fallback plan.")
+            enhanced_data = self._generate_fallback_enhanced_data(affected_pages, analysis)
+            scenarios = self._generate_placeholder_scenarios(affected_pages, changes)
+        
+        # Build the enhanced test plan
+        component_overview = None
+        if enhanced_data.get("component_overview"):
+            co_data = enhanced_data["component_overview"]
+            component_overview = ComponentOverview(
+                description=co_data.get("description", ""),
+                key_features=co_data.get("key_features", [])
+            )
+        
+        data_flow = None
+        if enhanced_data.get("data_flow"):
+            df_data = enhanced_data["data_flow"]
+            data_flow = DataFlow(
+                description=df_data.get("description", ""),
+                flow_diagram=df_data.get("flow_diagram", ""),
+                api_endpoints=df_data.get("api_endpoints", []),
+                data_sources=df_data.get("data_sources", [])
+            )
+        
+        # Parse test cases
+        test_cases = []
+        for tc_data in enhanced_data.get("test_cases", []):
+            test_cases.append(TestCase(
+                category=tc_data.get("category", ""),
+                test_cases=tc_data.get("test_cases", [])
+            ))
+        
+        # Parse column mappings
+        column_mappings = []
+        for cm_data in enhanced_data.get("column_mappings", []):
+            column_mappings.append(ColumnMapping(
+                column_name=cm_data.get("column_name", ""),
+                data_source=cm_data.get("data_source", ""),
+                backend_field=cm_data.get("backend_field", ""),
+                transformation=cm_data.get("transformation")
+            ))
+        
+        # Parse filter tests
+        filter_tests = []
+        for ft_data in enhanced_data.get("filter_tests", []):
+            filter_tests.append(FilterTest(
+                filter_name=ft_data.get("filter_name", ""),
+                filter_type=ft_data.get("filter_type", ""),
+                graphql_variable=ft_data.get("graphql_variable"),
+                test_case=ft_data.get("test_case", ""),
+                expected_behavior=ft_data.get("expected_behavior", "")
+            ))
+        
+        # Parse pagination tests
+        pagination_tests = []
+        for pt_data in enhanced_data.get("pagination_tests", []):
+            pagination_tests.append(PaginationTest(
+                test_case=pt_data.get("test_case", ""),
+                expected_behavior=pt_data.get("expected_behavior", "")
+            ))
+        
+        # Parse testing methods
+        testing_methods = []
+        for tm_data in enhanced_data.get("testing_methods", []):
+            testing_methods.append(TestingMethod(
+                method_name=tm_data.get("method_name", ""),
+                description=tm_data.get("description", ""),
+                steps=tm_data.get("steps", []),
+                code_example=tm_data.get("code_example")
+            ))
+        
+        # Parse test checklist
+        test_checklist = []
+        for tc_data in enhanced_data.get("test_checklist", []):
+            test_checklist.append(TestChecklistItem(
+                category=tc_data.get("category", ""),
+                test=tc_data.get("test", ""),
+                priority=tc_data.get("priority", "Medium")
+            ))
+        
+        return EnhancedUITestPlan(
+            merge_request_title=mr_title,
+            affected_ui_pages=affected_pages,
+            component_overview=component_overview,
+            data_flow=data_flow,
+            test_cases=test_cases,
+            column_mappings=column_mappings,
+            filter_tests=filter_tests,
+            pagination_tests=pagination_tests,
+            testing_methods=testing_methods,
+            test_checklist=test_checklist,
+            test_scenarios=scenarios,
+            overall_summary=self._create_summary(changes, affected_pages),
+            ai_insights=analysis
+        )
+    
+    def _generate_fallback_enhanced_data(self, affected_pages: List[str], analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate fallback enhanced data structure."""
+        return {
+            "component_overview": {
+                "description": f"Component affected by changes in {', '.join(affected_pages)}",
+                "key_features": ["Core functionality", "User interactions"]
+            },
+            "data_flow": {
+                "description": "Data flows from backend API to UI components",
+                "flow_diagram": "API → Component → UI Display",
+                "api_endpoints": [],
+                "data_sources": ["Backend API"]
+            },
+            "test_cases": [
+                {
+                    "category": "Data Loading & Display",
+                    "test_cases": [
+                        {
+                            "Test Case": "Initial load",
+                            "Expected Behavior": "Page loads without errors",
+                            "How to Verify": "Check for error messages or broken UI"
+                        }
+                    ]
+                }
+            ],
+            "column_mappings": [],
+            "filter_tests": [],
+            "pagination_tests": [],
+            "testing_methods": [
+                {
+                    "method_name": "Manual Testing",
+                    "description": "Navigate to the affected pages and verify functionality",
+                    "steps": [
+                        f"Navigate to {affected_pages[0] if affected_pages else 'the affected page'}",
+                        "Verify the page loads correctly",
+                        "Test the main functionality"
+                    ]
+                }
+            ],
+            "test_checklist": [
+                {
+                    "category": "Core Functionality",
+                    "test": "Verify page loads and displays correctly",
+                    "priority": "High"
+                }
+            ]
+        }
 
     async def generate_ai_plan(self, changes: List[ChangeAnalysis], affected_pages: List[str], mr_title: str, analysis: Dict[str, Any] = None) -> UITestPlan:
         """

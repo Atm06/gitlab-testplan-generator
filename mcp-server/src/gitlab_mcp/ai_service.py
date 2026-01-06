@@ -12,7 +12,11 @@ from typing import List, Dict, Any, Optional
 import aiohttp
 from pydantic import BaseModel
 
-from .models import ChangeAnalysis, UITestScenario, TestStep
+from .models import (
+    ChangeAnalysis, UITestScenario, TestStep, EnhancedUITestPlan,
+    ComponentOverview, DataFlow, ColumnMapping, FilterTest, PaginationTest,
+    TestCase, TestingMethod, TestChecklistItem
+)
 
 
 class AIConfig(BaseModel):
@@ -270,6 +274,189 @@ Create 3-5 focused test scenarios that cover the main functionality and potentia
                     return response.status == 200
         except:
             return False
+
+    async def generate_enhanced_test_plan(
+        self,
+        changes: List[ChangeAnalysis],
+        affected_pages: List[str],
+        mr_title: str,
+        analysis: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generate an enhanced, detailed test plan with component overview, data flow, 
+        column mappings, filtering, pagination, and testing methods.
+        """
+        system_prompt = """You are a senior QA engineer creating a comprehensive, detailed UI test plan for a web application component.
+
+Your task is to analyze the code changes and create a structured test plan that includes:
+
+1. **Component Overview**: A clear description of what the component does, its purpose, and key features
+2. **Key Data Flow**: Visual representation (ASCII art) showing how data flows from API/backend to UI components
+3. **What to Test**: Organized test cases in table format covering:
+   - Data Loading & Display
+   - Table Columns Data Mapping (if applicable)
+   - Filtering (if applicable)
+   - Pagination (if applicable)
+   - Error States
+   - User Interactions
+4. **How to Test UI Against Backend Data**: Multiple testing methods:
+   - Browser DevTools Network Tab
+   - Postman/GraphQL Testing (with example queries)
+   - Playwright E2E Tests (with code examples)
+5. **Test Checklist**: Organized by category with priorities (High/Medium/Low or emoji equivalents)
+
+Analyze the code changes carefully to identify:
+- API endpoints or GraphQL queries used
+- Data structures and field mappings
+- UI components and their data sources
+- Filtering mechanisms
+- Pagination logic
+- Error handling
+
+Respond with a comprehensive JSON object following this structure:
+{
+    "component_overview": {
+        "description": "Detailed description of what the component does",
+        "key_features": ["feature1", "feature2"]
+    },
+    "data_flow": {
+        "description": "Description of data flow",
+        "flow_diagram": "ASCII art representation showing data flow from API to UI",
+        "api_endpoints": ["endpoint1", "endpoint2"],
+        "data_sources": ["source1", "source2"]
+    },
+    "test_cases": [
+        {
+            "category": "Data Loading & Display",
+            "test_cases": [
+                {
+                    "Test Case": "Initial load",
+                    "Expected Behavior": "Shows skeleton loaders while loading",
+                    "How to Verify": "Check for skeleton elements"
+                }
+            ]
+        }
+    ],
+    "column_mappings": [
+        {
+            "column_name": "Tag",
+            "data_source": "image.repositories[].tags[].name",
+            "backend_field": "tags[].name",
+            "transformation": "Filter by matching repository"
+        }
+    ],
+    "filter_tests": [
+        {
+            "filter_name": "Tag Search",
+            "filter_type": "search",
+            "graphql_variable": "tags_elemMatch.name.iregex",
+            "test_case": "Type 'latest' → verify only matching tags shown",
+            "expected_behavior": "Filtered results contain 'latest'"
+        }
+    ],
+    "pagination_tests": [
+        {
+            "test_case": "Page navigation",
+            "expected_behavior": "Clicking page 2 updates page variable to 1 (0-indexed)"
+        }
+    ],
+    "testing_methods": [
+        {
+            "method_name": "Browser DevTools Network Tab",
+            "description": "How to use browser DevTools to verify UI matches backend",
+            "steps": ["step1", "step2"],
+            "code_example": "Optional code example if applicable"
+        }
+    ],
+    "test_checklist": [
+        {
+            "category": "Data Display",
+            "test": "Verify all columns populated correctly",
+            "priority": "High"
+        }
+    ]
+}
+
+Be thorough and detailed. Extract as much information as possible from the code changes."""
+        
+        # Prepare detailed code context
+        code_context = f"Merge Request: {mr_title}\n\n"
+        code_context += f"Summary: {analysis.get('summary', 'Code changes detected')}\n"
+        code_context += f"Affected UI Areas: {', '.join(affected_pages)}\n\n"
+        code_context += "Code Changes:\n"
+        
+        for change in changes[:15]:  # Include more files for better context
+            code_context += f"\n--- File: {change.file_path} ({change.change_type}) ---\n"
+            # Include full diff for better analysis
+            if len(change.raw_diff) < 5000:  # Include if not too long
+                code_context += f"{change.raw_diff}\n"
+            else:
+                code_context += f"{change.raw_diff[:5000]}...\n[truncated]\n"
+        
+        prompt = f"""Analyze these code changes and generate a comprehensive test plan:
+
+{code_context}
+
+Generate a detailed test plan following the structure specified in the system prompt."""
+        
+        response = await self._call_ollama(prompt, system_prompt)
+        
+        try:
+            cleaned_response = self._clean_json_response(response)
+            return json.loads(cleaned_response)
+        except json.JSONDecodeError as e:
+            print(f"⚠️  Enhanced test plan JSON parsing failed: {e}")
+            print(f"Raw response: {response[:500]}...")
+            # Return a basic structure
+            return self._generate_fallback_enhanced_plan(affected_pages, analysis)
+    
+    def _generate_fallback_enhanced_plan(self, affected_pages: List[str], analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate a basic enhanced plan structure if AI parsing fails."""
+        return {
+            "component_overview": {
+                "description": f"Component affected by changes in {', '.join(affected_pages)}",
+                "key_features": ["Core functionality", "User interactions"]
+            },
+            "data_flow": {
+                "description": "Data flows from backend API to UI components",
+                "flow_diagram": "API → Component → UI Display",
+                "api_endpoints": [],
+                "data_sources": ["Backend API"]
+            },
+            "test_cases": [
+                {
+                    "category": "Data Loading & Display",
+                    "test_cases": [
+                        {
+                            "Test Case": "Initial load",
+                            "Expected Behavior": "Page loads without errors",
+                            "How to Verify": "Check for error messages or broken UI"
+                        }
+                    ]
+                }
+            ],
+            "column_mappings": [],
+            "filter_tests": [],
+            "pagination_tests": [],
+            "testing_methods": [
+                {
+                    "method_name": "Manual Testing",
+                    "description": "Navigate to the affected pages and verify functionality",
+                    "steps": [
+                        f"Navigate to {affected_pages[0] if affected_pages else 'the affected page'}",
+                        "Verify the page loads correctly",
+                        "Test the main functionality"
+                    ]
+                }
+            ],
+            "test_checklist": [
+                {
+                    "category": "Core Functionality",
+                    "test": "Verify page loads and displays correctly",
+                    "priority": "High"
+                }
+            ]
+        }
 
     def _clean_json_response(self, response: str) -> str:
         """
